@@ -1,67 +1,40 @@
-const { Connection, PublicKey } = require('@solana/web3.js');
+const { Connection, PublicKey ,getTransactionDetailsByHash} = require('@solana/web3.js');
 require('dotenv').config()
-const connection = new Connection(process.env.RPC, 'confirmed'); 
-const programId = new PublicKey("6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P"); 
 const web3 = require("./utils/web3");
-const monitoredAddress =programId;
-const sdk = require("@pumplend/pumplend-sdk")
+const connection = new Connection(process.env.RPC, 'confirmed',{wsEndpoint:process.env.WS});
 
+const programId = new PublicKey('6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P');
 
-const lend = new sdk.Pumplend(process.env.NETWORK) 
-let lastTx = ""
-async function loop ()
-{
-    const txs = await web3.getTransactionHistory(monitoredAddress,50);
-    if(txs && txs?.length > 0)
-        {
-          
-          var finalArr = await hashCheck(txs);
-          for (let i = finalArr.length-1 ; i > -1 ; i--)
-          {
-            try{
-            //   console.log(txs[i]?.signature)
-              let tx = finalArr[i]
-             
-              await handleNewTx(tx)
-
-              //Update indexer
-              lastTx = tx.signature;
-            }catch(e)
-            {
-              console.error(e)
-            }
-
-          }
-
-        }    
-}
+connection.onLogs(programId, async (logs, context) => {
+  var tmp = "";
+  for(i in logs.logs)
+  {
+    tmp+=logs.logs[i];
+  }
+  if(tmp.includes("Instruction: InitializeMint2"))
+  {
+    // console.log("🔥 Create it ! ", logs.signature)
+    // console.log(logs)
+    await handleNewTx(logs.signature)
+  }
+}, 'confirmed');
 
 async function handleNewTx(tx) {
-  if(tx && tx?.signature )
+  if(tx)
   {
-    const decode = await web3.getTransactionDetailsByHash(tx.signature);
-    for( let i = 0 ; i < decode.length;i++)
+    const decode = await connection.getTransaction(tx, { commitment: "confirmed" ,"maxSupportedTransactionVersion": 0}); 
+    for(i in decode.transaction.message.staticAccountKeys)
     {
-      await actions(tx.signature,decode[i])
+        let b58add = decode.transaction.message.staticAccountKeys[i].toBase58()
+        if(b58add.slice(b58add.length-4,b58add.length) == "pump")
+        {
+            
+            //You fuond the token now 
+            console.log(b58add)
+        }
     }
   }
 }
-
-async function hashCheck(rawData) {
-    const latestTxHash =lastTx;
-   
-    for(let i = 0 ; i<=rawData.length ;i++)
-    {
-      //TODO , Add the out of index fetcher
-      if(rawData[i]?.signature == latestTxHash.hash)
-      {
-        return rawData.slice(0, i);
-      }
-    }
-
-    return rawData;
-}
-
 async function actions(hash,data) {
     if(data.name == "create")
         {
@@ -76,20 +49,3 @@ async function actions(hash,data) {
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
-
-async function init() {
-  while(true)
-  {
-    try{
-      await loop();
-      await sleep(1000) //30s
-    }catch(e){
-      console.error(e)
-    }
-  }
-}
-
-
-// loop()
-
-init()
