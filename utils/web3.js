@@ -145,15 +145,22 @@ function getLocalPublicKey()
 }
 
 async function localSendTx(tx) {
-  const { blockhash } = await connection.getRecentBlockhash();
-  tx.recentBlockhash = blockhash;
-  tx.feePayer = kp.publicKey;
-  await tx.sign(kp);
-  const signature = await connection.sendTransaction(tx, [kp]);
-  // console.log('Transaction sent with signature:', signature);
-  const confirmation = await connection.confirmTransaction(signature);
-  // console.log('Transaction confirmed:', confirmation);
-  return signature;
+  try{
+    const { blockhash } = await connection.getRecentBlockhash();
+    tx.recentBlockhash = blockhash;
+    tx.feePayer = kp.publicKey;
+    await tx.sign(kp);
+    const signature = await connection.sendTransaction(tx, [kp]);
+    // console.log('Transaction sent with signature:', signature);
+    const confirmation = await connection.confirmTransaction(signature);
+    // console.log('Transaction confirmed:', confirmation);
+    return signature;
+  }catch(e)
+  {
+    console.error(e)
+    return false;
+  }
+
 }
 
 module.exports= {
