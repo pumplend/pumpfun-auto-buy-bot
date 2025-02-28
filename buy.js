@@ -16,7 +16,7 @@ let kp = Keypair.fromSecretKey(new Uint8Array(
   bs58.default.decode(process.env.SK)
 ));
 
-const maxBuy = 25;
+const maxBuy = 30;
 connection.onLogs(programId, async (logs, context) => {
   var tmp = "";
   for(i in logs.logs)
@@ -50,7 +50,7 @@ async function handleNewTx(tx) {
             //You fuond the token now 
             console.log(b58add)
             const positionCount = await db.positionCount();
-            if(positionCount<=maxBuy)
+            if(positionCount<=positionCount+30)
             {
               await buyToken(b58add)
             }else{
@@ -80,7 +80,7 @@ async function buyToken(tk)
     }
   )
   const transaction = new Transaction();
-  const instruction = await lend.leverage_pump(3*1e7,new PublicKey(tk),kp.publicKey);
+  const instruction = await lend.leverage_pump(2*1e7,new PublicKey(tk),kp.publicKey);
   const acc = getAssociatedTokenAddressSync(
     new PublicKey(tk),
     kp.publicKey,
@@ -98,7 +98,7 @@ async function buyToken(tk)
     return true;
   }else{
     console.log("TX Send Failed ",tx)
-    await db.deletePositionById()
+    await db.deletePositionById(tk)
     return false;
   }
 }

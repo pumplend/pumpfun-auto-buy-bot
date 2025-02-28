@@ -15,7 +15,7 @@ const lend = new pumplend.Pumplend(
 let kp = Keypair.fromSecretKey(new Uint8Array(
   bs58.default.decode(process.env.SK)
 ));
-const miniPoolSize = 50;
+const miniPoolSize = 10;
 
 async function getUserTokenList() {
     const myHeaders = new Headers();
@@ -39,15 +39,46 @@ async function loop() {
         if(poolSize>miniPoolSize)
         {
             console.log("🍺 ",poolSize,i.address)
+            await sellToken(i.address)
         }else{
             console.log(poolSize,i.address)
         }
+        
+        
     }
     
 }
 
+async function sellToken(tk)
+{
+  //Storage to db to check if exsit already 
+  const transaction = new Transaction();
+  const instruction = await lend.close_pump(new PublicKey(tk),kp.publicKey);
+  transaction.add(instruction)
+
+  const tx = await web3.localSendTx(transaction);
+  if(tx)
+  {
+    console.log("TX Send Success ",tx)
+    await db.deletePositionById(tk)
+    return true;
+  }else{
+    console.log("TX Send Failed ",tx)
+    await db.deletePositionById(tk)
+    return false;
+  }
+}
+function sleep(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+  
 async function init() {
+    while(true)
+    {
+        await loop();
+        await sleep(60000);
+    }
 }
 
-loop();
-// init()
+// loop();
+init()
